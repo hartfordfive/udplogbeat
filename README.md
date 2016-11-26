@@ -1,6 +1,6 @@
 # Udplogbeat
 
-Welcome to Udplogbeat.
+Udplogbeat is a custom beats application intended to allow developers to log events to be indexed in Elasticsearch.  Log entries are sent to a local UDP socket and then shipped out via the selected output.
 
 Ensure that this folder is at the following location:
 `${GOPATH}/github.com/hartfordfive`
@@ -10,6 +10,36 @@ Ensure that this folder is at the following location:
 ### Requirements
 
 * [Golang](https://golang.org/dl/) 1.7
+
+
+### Log Structure
+
+In order for the udplogbeat application to accept events, they must be structured in the following format:
+
+**[FORMAT]:[ES_TYPE]:[EVENT_DATA]**
+
+* FORMAT : Either `json` or `plain`.  JSON encoded entries will be automatically parsed.
+* ES_TYPE : The type to be used in Elasticsearch
+* EVENT_DATA : The log entry itself
+
+*Example:*
+
+Plain encoded event:
+```
+plain:syslog:Nov 26 18:51:42 my-web-host01 dhclient: DHCPACK of 10.2.1.2 from 10.2.1.3
+```
+
+JSON encoded event:
+```
+json:my_application:{"":"", "":"", "":""}
+```
+
+*Please note the current date/time is automatically added to each log entry.*
+
+### Sample Clients
+
+Please see the `sample_clients/` directory for examples of clients in various languages.
+
 
 ### Init Project
 To get running with Udplogbeat and also install the
