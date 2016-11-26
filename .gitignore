@@ -1,0 +1,9 @@
+/.idea
+/build
+/bin
+
+.DS_Store
+/udplogbeat
+/udplogbeat.test
+*.pyc
+udplogbeat.local.yml
