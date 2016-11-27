@@ -6,29 +6,7 @@ import (
 	"strings"
 )
 
-/*
-var byteType = reflect.TypeOf([]byte(nil))
-type UdpBuffer []byte
-
-func (b *UdpBuffer) String() string {
-	//   ref := reflect.ValueOf(b)
-	//   if ref.Kind() != reflect.Uint16 {
-	//      return 0
-	//   }
-	//   return uint16(ref.Uint())
-
-
-	v := reflect.ValueOf(b)
-	if v.Kind() == reflect.Slice {
-		if v.Type() == byteType {
-			byteSlice := []byte(v.Slice()))
-      return strings.TrimSpace(string(byteSlice))
-		}
-	}
-	return ""
-}
-*/
-
+// GetLogItem returns the log entry format, elasticsearch type, message and error (if any)
 func GetLogItem(buf []byte) (string, string, string, error) {
 
 	parts := strings.SplitN(string(buf), ":", 3)
