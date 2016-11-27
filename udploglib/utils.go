@@ -2,7 +2,6 @@ package udploglib
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 )
 
