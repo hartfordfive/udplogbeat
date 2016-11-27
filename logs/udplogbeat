@@ -1,0 +1,13 @@
+2016-11-25T15:00:13-05:00 INFO Home path: [/usr/local/go/src/github.com/hartfordfive/udplogbeat] Config path: [/usr/local/go/src/github.com/hartfordfive/udplogbeat] Data path: [/usr/local/go/src/github.com/hartfordfive/udplogbeat/data] Logs path: [/usr/local/go/src/github.com/hartfordfive/udplogbeat/logs]
+2016-11-25T15:00:13-05:00 INFO Setup Beat: udplogbeat; Version: 6.0.0-alpha1
+2016-11-25T15:00:13-05:00 INFO Loading template enabled. Reading template file: /usr/local/go/src/github.com/hartfordfive/udplogbeat/udplogbeat.template.json
+2016-11-25T15:00:13-05:00 INFO Loading template enabled for Elasticsearch 2.x. Reading template file: /usr/local/go/src/github.com/hartfordfive/udplogbeat/udplogbeat.template-es2x.json
+2016-11-25T15:00:13-05:00 INFO Elasticsearch url: http://localhost:9200
+2016-11-25T15:00:13-05:00 INFO Activated elasticsearch as output plugin.
+2016-11-25T15:00:13-05:00 INFO Publisher name: Alain-L-MBP
+2016-11-25T15:00:13-05:00 INFO Flush Interval set to: 1s
+2016-11-25T15:00:13-05:00 INFO Max Bulk Size set to: 50
+2016-11-25T15:00:13-05:00 INFO udplogbeat start running.
+2016-11-25T15:00:13-05:00 INFO udplogbeat is running! Hit CTRL-C to stop it.
+2016-11-25T15:00:43-05:00 INFO No non-zero metrics in the last 30s
+2016-11-25T15:01:13-05:00 INFO No non-zero metrics in the last 30s
