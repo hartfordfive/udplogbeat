@@ -1,8 +1,10 @@
 package udploglib
 
 import (
+	//"errors"
 	"fmt"
 	"strings"
+	//"github.com/xeipuuv/gojsonschema"
 )
 
 // GetLogItem returns the log entry format, elasticsearch type, message and error (if any)

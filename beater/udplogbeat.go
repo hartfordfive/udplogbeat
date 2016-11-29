@@ -15,12 +15,14 @@ import (
 	"github.com/hartfordfive/udplogbeat/config"
 	"github.com/hartfordfive/udplogbeat/udploglib"
 	"github.com/pquerna/ffjson/ffjson"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 type Udplogbeat struct {
-	done   chan struct{}
-	config config.Config
-	client publisher.Client
+	done               chan struct{}
+	config             config.Config
+	client             publisher.Client
+	jsonDocumentSchema map[string]gojsonschema.JSONLoader
 }
 
 // Creates beater
@@ -31,8 +33,16 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	}
 
 	bt := &Udplogbeat{
-		done:   make(chan struct{}),
-		config: config,
+		done:               make(chan struct{}),
+		config:             config,
+		jsonDocumentSchema: map[string]gojsonschema.JSONLoader{},
+	}
+
+	for name, path := range config.JsonDocumentTypeSchema {
+		logp.Info("Loading JSON schema %s from %s", name, path)
+		schemaLoader := gojsonschema.NewReferenceLoader("file://" + path)
+		ds := schemaLoader
+		bt.jsonDocumentSchema[name] = ds
 	}
 
 	bt.config.Addr = fmt.Sprintf("127.0.0.1:%d", bt.config.Port)
@@ -65,6 +75,8 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 	udpBuf := make([]byte, bt.config.MaxMessageSize)
 	var event common.MapStr
 
+	logp.Info("Loaded schemas: %v", bt.jsonDocumentSchema)
+
 	for {
 
 		select {
@@ -96,19 +108,44 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 		logp.Info("Format: %s", logFormat)
 		logp.Info("ES Type: %s", logType)
 		logp.Info("Data: %s", logData)
+		logp.Info("---------------------------------------------------")
 
 		event = common.MapStr{}
 
 		if logFormat == "json" {
+
+			if bt.config.EnableJsonValidation {
+
+				if _, ok := bt.jsonDocumentSchema[logType]; !ok {
+					logp.Err("No schema found for this type")
+					continue
+				}
+
+				result, err := gojsonschema.Validate(bt.jsonDocumentSchema[logType], gojsonschema.NewStringLoader(logData))
+				if err != nil {
+					logp.Err("Error with JSON object: %s", err.Error())
+					continue
+				}
+
+				if !result.Valid() {
+					logp.Err("Invalid document type")
+					event["message"] = logData
+					event["tags"] = []string{"_udplogbeat_jspf"}
+					goto SendFailedMsg
+				}
+			}
+
 			if err := ffjson.Unmarshal([]byte(logData), &event); err != nil {
 				logp.Err("Could not load json formated event: %v", err)
-				continue
+				event["message"] = logData
+				event["tags"] = []string{"_udplogbeat_jspf"}
 			}
 			logp.Info("Event: %v", event)
 		} else {
 			event["message"] = logData
 		}
 
+	SendFailedMsg:
 		event["@timestamp"] = common.Time(time.Now())
 		event["type"] = logType
 		event["counter"] = counter
