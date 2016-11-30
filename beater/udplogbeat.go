@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/elastic/beats/libbeat/beat"
@@ -15,12 +16,14 @@ import (
 	"github.com/hartfordfive/udplogbeat/config"
 	"github.com/hartfordfive/udplogbeat/udploglib"
 	"github.com/pquerna/ffjson/ffjson"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 type Udplogbeat struct {
-	done   chan struct{}
-	config config.Config
-	client publisher.Client
+	done               chan struct{}
+	config             config.Config
+	client             publisher.Client
+	jsonDocumentSchema map[string]gojsonschema.JSONLoader
 }
 
 // Creates beater
@@ -33,6 +36,19 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	bt := &Udplogbeat{
 		done:   make(chan struct{}),
 		config: config,
+	}
+
+	if bt.config.EnableJsonValidation {
+
+		bt.jsonDocumentSchema = map[string]gojsonschema.JSONLoader{}
+
+		for name, path := range config.JsonDocumentTypeSchema {
+			logp.Info("Loading JSON schema %s from %s", name, path)
+			schemaLoader := gojsonschema.NewReferenceLoader("file://" + path)
+			ds := schemaLoader
+			bt.jsonDocumentSchema[name] = ds
+		}
+
 	}
 
 	bt.config.Addr = fmt.Sprintf("127.0.0.1:%d", bt.config.Port)
@@ -64,6 +80,8 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 	}
 	udpBuf := make([]byte, bt.config.MaxMessageSize)
 	var event common.MapStr
+	var now common.Time
+	var logFormat, logType, logData string
 
 	for {
 
@@ -73,7 +91,7 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 		default:
 		}
 
-		logp.Info("Reading from UDP socket...")
+		now = common.Time(time.Now())
 
 		// Events should be in the format of: [FORMAT]:[ES_TYPE]:[EVENT_DATA]
 		logSize, _, err := l.ReadFrom(udpBuf)
@@ -86,35 +104,69 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 			}
 		}
 
-		logFormat, logType, logData, err := udploglib.GetLogItem(udpBuf[:logSize])
-		if err != nil {
-			logp.Err("Error parsing log item: %v", err)
-			continue
+		if bt.config.EnableSyslogFormatOnly {
+			logFormat = "plain"
+			logType = "syslog"
+			logData = strings.TrimSpace(string(udpBuf[:logSize]))
+			if logData == "" {
+				logp.Err("Syslog event is empty")
+				continue
+			}
+		} else {
+			parts, err := udploglib.GetLogItem(udpBuf[:logSize])
+			logFormat = parts[0]
+			logType = parts[1]
+			logData = parts[2]
+			if err != nil {
+				logp.Err("Error parsing log item: %v", err)
+				continue
+			}
+			logp.Info("Size, Format, ES Type: %d bytes, %s, %s", logSize, logFormat, logType)
 		}
 
-		logp.Info("Total log item bytes: %d", logSize)
-		logp.Info("Format: %s", logFormat)
-		logp.Info("ES Type: %s", logType)
-		logp.Info("Data: %s", logData)
+		//logp.Info("Data: %s...", logData[0:40])
 
 		event = common.MapStr{}
 
 		if logFormat == "json" {
+
+			if bt.config.EnableJsonValidation {
+
+				if _, ok := bt.jsonDocumentSchema[logType]; !ok {
+					logp.Err("No schema found for this type")
+					continue
+				}
+
+				result, err := gojsonschema.Validate(bt.jsonDocumentSchema[logType], gojsonschema.NewStringLoader(logData))
+				if err != nil {
+					logp.Err("Error with JSON object: %s", err.Error())
+					continue
+				}
+
+				if !result.Valid() {
+					logp.Err("Invalid document type")
+					event["message"] = logData
+					event["tags"] = []string{"_udplogbeat_jspf"}
+					goto SendFailedMsg
+				}
+			}
+
 			if err := ffjson.Unmarshal([]byte(logData), &event); err != nil {
 				logp.Err("Could not load json formated event: %v", err)
-				continue
+				event["message"] = logData
+				event["tags"] = []string{"_udplogbeat_jspf"}
 			}
-			logp.Info("Event: %v", event)
 		} else {
 			event["message"] = logData
 		}
 
-		event["@timestamp"] = common.Time(time.Now())
+	SendFailedMsg:
+		event["@timestamp"] = now
 		event["type"] = logType
 		event["counter"] = counter
 
 		bt.client.PublishEvent(event)
-		logp.Info("Event sent")
+		//logp.Info("Event sent")
 		counter++
 
 	}

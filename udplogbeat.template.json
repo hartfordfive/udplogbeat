@@ -15,7 +15,7 @@
               "type": "keyword"
             },
             "match_mapping_type": "string",
-            "path_match": "fields.*"
+            "match": "*"
           }
         }
       ],

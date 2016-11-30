@@ -12,11 +12,52 @@ Ensure that this folder is at the following location:
 ### Requirements
 
 * [Golang](https://golang.org/dl/) 1.7
+* github.com/pquerna/ffjson/ffjson
+* github.com/xeipuuv/gojsonschema
+
+### Configuration Options
+
+- `udplogbeat.port` : The UDP port on which the process will listen (Default = 5000)
+- `udplogbeat.max_message_size` : The maximum accepted message size (Default = 1024)
+- `udplogbeat.enable_syslog_format_only` : Boolean value indicating if only syslog messages should be accepted. (Default = false)
+- `udplogbeat.enable_json_validation` : Boolean value indicating if JSON schema validation should be applied for `json` format messages (Default = false)
+- `udplogbeat.publish_failed_json_invalid` : Boolean value indicating if JSON objects should be sent serialized in the event of a failed validation.  This will add the `_udplogbeat_jspf` tag. (Default = false)
+- `udplogbeat.json_document_type_schema` :  A hash consisting of the Elasticsearch type as the key, and the absolute local schema file path as the value.
+
+### Configuration Example
+
+Sample configuration for a syslog replacement
+```
+udplogbeat:
+  port: 5000
+  max_message_size: 4096
+  enable_syslog_format_only: false
+```
+
+Sample configuration that enforces schemas for JSON format events
+```
+udplogbeat:
+  port: 5001
+  max_message_size: 2048
+  enable_json_validation: true
+  json_document_type_schema: 
+    email_contact: "/etc/udplogbeat/app1_schema.json"
+    stock_item: "/etc/udplogbeat/app2_schema.json"
+```
+
+JSON schemas can be automatically generated from an object here: http://jsonschema.net/.  You can also view the included sample schemas `app1_schema.json` and `app2_schema.json` as examples.
+
+#### Considerations
+
+If you intend on using this as a drop-in replacement to logging with Rsyslog, this method will not persist your data to a file on disk.  
+If udplogbeat is down for any given reason, messages sent to the configured UDP port will never be processed or sent to your ELK cluster.
+If you need 100% guarantee each message will be delivered at least once, this may not be the best solution for you.  
+If some potential loss of log events is acceptable for you, than this may be a reasonable solution for you.
 
 
 ### Log Structure
 
-In order for the udplogbeat application to accept events, they must be structured in the following format:
+In order for the udplogbeat application to accept events, when not in syslog format only mode (*enable_syslog_format_only: false*), they must be structured in the following format:
 
 **[FORMAT]:[ES_TYPE]:[EVENT_DATA]**
 
@@ -71,6 +112,11 @@ in the same directory with the name udplogbeat.
 make
 ```
 
+Or to build the zipped binaries for OSX, Windows and Linux:
+
+./build_os_binaries.sh "[VERSION_NUMBER]"
+
+These will be placed in the `bin/` directory.
 
 ### Run
 
