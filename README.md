@@ -40,20 +40,24 @@ udplogbeat:
   port: 5001
   max_message_size: 2048
   enable_json_validation: true
-  # JSON schemas can be automatically generated from an object here: http://jsonschema.net/
   json_document_type_schema: 
     email_contact: "/etc/udplogbeat/app1_schema.json"
     stock_item: "/etc/udplogbeat/app2_schema.json"
 ```
 
+JSON schemas can be automatically generated from an object here: http://jsonschema.net/.  You can also view the included sample schemas `app1_schema.json` and `app2_schema.json` as examples.
+
 #### Considerations
 
-Keep in mind if you intend on using this as a drop-in replacement to logging to a file with Rsyslog, this method will not persist your data to a file on disk.
-It could be technically possible to loose some data, therefore if you need 100% guarantee each message will be delivered at least once, this may not be the best solution for you.
+If you intend on using this as a drop-in replacement to logging with Rsyslog, this method will not persist your data to a file on disk.  
+If udplogbeat is down for any given reason, messages sent to the configured UDP port will never be processed or sent to your ELK cluster.
+If you need 100% guarantee each message will be delivered at least once, this may not be the best solution for you.  
+If some potential loss of log events is acceptable for you, than this may be a reasonable solution for you.
+
 
 ### Log Structure
 
-In order for the udplogbeat application to accept events, they must be structured in the following format:
+In order for the udplogbeat application to accept events, when not in syslog format only mode (*enable_syslog_format_only: false*), they must be structured in the following format:
 
 **[FORMAT]:[ES_TYPE]:[EVENT_DATA]**
 
@@ -108,6 +112,11 @@ in the same directory with the name udplogbeat.
 make
 ```
 
+Or to build the zipped binaries for OSX, Windows and Linux:
+
+./build_os_binaries.sh "[VERSION_NUMBER]"
+
+These will be placed in the `bin/` directory.
 
 ### Run
 
