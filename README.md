@@ -12,6 +12,9 @@ Ensure that this folder is at the following location:
 ### Requirements
 
 * [Golang](https://golang.org/dl/) 1.7
+* github.com/pquerna/ffjson/ffjson
+* github.com/xeipuuv/gojsonschema
+
 
 
 ### Log Structure
@@ -37,6 +40,8 @@ json:my_application:{"message":"This is a test JSON message", "application":"my\
 ```
 
 *Please note the current date/time is automatically added to each log entry.*
+
+### Configuration Options
 
 ### Sample Clients
 

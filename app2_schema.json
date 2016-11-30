@@ -19,5 +19,6 @@
     "stock_count": {
       "type": "integer"
     }
-  }
+  },
+  "additionalProperties": false
 }
