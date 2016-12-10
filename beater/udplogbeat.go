@@ -157,7 +157,16 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 				event["tags"] = []string{"_udplogbeat_jspf"}
 			}
 		} else {
-			event["message"] = logData
+			if bt.config.EnableSyslogFormatOnly {
+				msg, facility, severity, err := udploglib.GetSyslogMsgDetails(logData)
+				if err == nil {
+					event["facility"] = facility
+					event["severity"] = severity
+					event["message"] = msg
+				}
+			} else {
+				event["message"] = logData
+			}
 		}
 
 	SendFailedMsg:
