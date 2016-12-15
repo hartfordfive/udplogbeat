@@ -3,7 +3,7 @@ import socket
 import json
 
 '''
-
+Sample logging client that writes to the local instance of udplogbeat listening on the configured port
 '''
 
 class Logger:

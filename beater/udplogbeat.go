@@ -3,8 +3,6 @@ package beater
 import (
 	"fmt"
 	"net"
-	"os"
-	"os/signal"
 	"strings"
 	"time"
 
@@ -24,9 +22,10 @@ type Udplogbeat struct {
 	config             config.Config
 	client             publisher.Client
 	jsonDocumentSchema map[string]gojsonschema.JSONLoader
+	conn               *net.UDPConn
 }
 
-// Creates beater
+// New creates beater
 func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	config := config.DefaultConfig
 	if err := cfg.Unpack(&config); err != nil {
@@ -53,14 +52,6 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 
 	bt.config.Addr = fmt.Sprintf("127.0.0.1:%d", bt.config.Port)
 
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
-		logp.Info("Caught interrupt signal, terminating udplogbeat.")
-		os.Exit(0)
-	}()
-
 	return bt, nil
 }
 
@@ -72,6 +63,7 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 
 	addr, err := net.ResolveUDPAddr("udp", bt.config.Addr)
 	l, err := net.ListenUDP(addr.Network(), addr)
+	bt.conn = l
 
 	logp.Info("Listening on %s (UDP)", bt.config.Addr)
 
@@ -94,7 +86,11 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 		now = common.Time(time.Now())
 
 		// Events should be in the format of: [FORMAT]:[ES_TYPE]:[EVENT_DATA]
-		logSize, _, err := l.ReadFrom(udpBuf)
+		logSize, _, err := bt.conn.ReadFrom(udpBuf)
+
+		if logSize == 0 {
+			continue
+		}
 
 		if err != nil {
 			e, ok := err.(net.Error)
@@ -123,8 +119,6 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 			}
 			logp.Info("Size, Format, ES Type: %d bytes, %s, %s", logSize, logFormat, logType)
 		}
-
-		//logp.Info("Data: %s...", logData[0:40])
 
 		event = common.MapStr{}
 
@@ -157,7 +151,16 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 				event["tags"] = []string{"_udplogbeat_jspf"}
 			}
 		} else {
-			event["message"] = logData
+			if bt.config.EnableSyslogFormatOnly {
+				msg, facility, severity, err := udploglib.GetSyslogMsgDetails(logData)
+				if err == nil {
+					event["facility"] = facility
+					event["severity"] = severity
+					event["message"] = msg
+				}
+			} else {
+				event["message"] = logData
+			}
 		}
 
 	SendFailedMsg:
@@ -166,13 +169,15 @@ func (bt *Udplogbeat) Run(b *beat.Beat) error {
 		event["counter"] = counter
 
 		bt.client.PublishEvent(event)
-		//logp.Info("Event sent")
 		counter++
 
 	}
 }
 
 func (bt *Udplogbeat) Stop() {
+	if err := bt.conn.Close(); err != nil {
+		logp.Err("Could not close UDP connection before terminating: %v", err)
+	}
 	bt.client.Close()
 	close(bt.done)
 }
