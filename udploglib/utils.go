@@ -114,8 +114,8 @@ func GetLogItem(buf []byte) ([]string, error) {
 	 Source: https://tools.ietf.org/html/rfc5424 [Page 10]
 */
 
-// ExtractSyslogFacilityAndServerity returns the facility and severity of a valid syslog message
-func getSyslogFacilityAndServerity(syslogMsg string) (string, int, int, error) {
+// GetSyslogMsgDetails returns the facility and severity of a valid syslog message
+func GetSyslogMsgDetails(syslogMsg string) (string, int, int, error) {
 
 	re := regexp.MustCompile(`^<([0-9]{1,3})>(.*)`)
 	matches := re.FindStringSubmatch(syslogMsg)
@@ -130,13 +130,4 @@ func getSyslogFacilityAndServerity(syslogMsg string) (string, int, int, error) {
 	facility := (priorityNum - severity) / 8
 	return matches[2], facility, severity, nil
 
-}
-
-// GetSyslogFacilityAndServerityAsStr returns the facility and serverity as text
-func GetSyslogMsgDetails(syslogMsg string) (string, string, string, error) {
-	msg, facility, severity, err := getSyslogFacilityAndServerity(syslogMsg)
-	if err != nil {
-		return "", "", "", err
-	}
-	return msg, SyslogFacilityString[facility], SyslogSeverityString[severity], nil
 }
