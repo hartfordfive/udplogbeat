@@ -3,9 +3,13 @@
 Udplogbeat is a custom beats application intended to allow developers to log events to be indexed in Elasticsearch.  Log entries are sent to a local UDP socket and then shipped out via the selected output.
 The intended purpose of this tool is to allow any application to easily log messages locally without writting to disk and taking advantage of the beats framework's various built-in outputs and features.
 
-
 Ensure that this folder is at the following location:
 `${GOPATH}/github.com/hartfordfive`
+
+## Notice
+
+This beat is now being replaced by [protologbeat](https://www.github.com/hartfordfive/protologbeat).  Although this beat should work just fine, it's advised that you use it's succesor instead as it has some improvements, as well as the ability to choose between tcp or udp.  Changes will no longer be made to this project.
+
 
 ## Getting Started with Udplogbeat
 
